@@ -1,0 +1,157 @@
+---
+author: "BAMIDELE TELLA"
+date: "15/07/2020"
+output: html_document
+title: "Effect of Severe Weather Events on Public Health in Communities across US"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# SYNOPSIS
+Severe weather events has been a constant cause of deterioration in public health of communities. It has also caused economic impediment across the United States. In this project, I explore the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, crop damage, and property damage. The events in the database start in the year 1950 and end in November 2011. I used the recorded observations to show the effects of severe weather on public health as well as its effect on the economy.
+
+# DATA PROCESSING
+## Downloading Data
+First the data set is downloaded and unzipped to the local directory.
+```{r}
+if(!file.exists("./Download")){dir.create("./Download")}
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(fileUrl, destfile = "./Download/repdata_data_StormData.csv.bz2")
+```
+
+## Loading the Data into R
+Next, the data set is loaded into R using an R function. First we load in the R libraries we shall use to perform analyses. The data set is stored in a vector variable. Then some operations are performed on the data using R functions, to acquire all information about the data set.
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(stats)
+library(knitr)
+
+Stormdata<-read.csv(bzfile("./Download/repdata_data_StormData.csv.bz2"),header=TRUE)
+dim(Stormdata)
+str(Stormdata)
+```
+
+## Cleaning Data for Analysis
+In order to perform the analysis required efficiently, only the rows and columns of the data set needed, for my analysis is extracted and stored in a new vector variable. Then the new data frame is viewed using the str function.
+```{r}
+variables<-c("EVTYPE","FATALITIES","INJURIES","PROPDMG","PROPDMGEXP","CROPDMG","CROPDMGEXP")
+newStormD<-Stormdata[variables]
+str(newStormD)
+```
+
+Next, The data set is cleaned up by the different weather events in the data, by grouping events that are similar. The grouping is done by the specific word that describes the event. Any event that doesn't fall under any of the specified events is grouped as 'OTHER' events. These new group of events is stored in a new variable column 'EVENT'. 
+```{r}
+newStormD$EVENT<-"OTHER"
+newStormD$EVENT[grep("HAIL",newStormD$EVTYPE, ignore.case = TRUE)]<-"HAIL"
+newStormD$EVENT[grep("WIND|COLD",newStormD$EVTYPE, ignore.case = TRUE)]<-"WIND"
+newStormD$EVENT[grep("TYPHOON|HURRICANE",newStormD$EVTYPE, ignore.case = TRUE)]<-"TYPHOON/HURRICANE"
+newStormD$EVENT[grep("FLOOD|FLD|URBAN",newStormD$EVTYPE, ignore.case = TRUE)]<-"FLOOD"
+newStormD$EVENT[grep("TORNADO",newStormD$EVTYPE, ignore.case = TRUE)]<-"TORNADO"
+newStormD$EVENT[grep("STORM|TIDE",newStormD$EVTYPE, ignore.case = TRUE)]<-"STORM"
+newStormD$EVENT[grep("FIRE|WILDFIRE",newStormD$EVTYPE, ignore.case = TRUE)]<-"FIRE"
+newStormD$EVENT[grep("RAIN",newStormD$EVTYPE, ignore.case = TRUE)]<-"RAIN"
+newStormD$EVENT[grep("DROUGHT",newStormD$EVTYPE, ignore.case = T)]<-"DROUGHT"
+newStormD$EVENT[grep("SNOW",newStormD$EVTYPE, ignore.case = TRUE)]<-"SNOW"
+newStormD$EVENT[grep("LIGHTNING|LIGHTING",newStormD$EVTYPE, ignore.case = TRUE)]<-"LIGHTNING"
+newStormD$EVENT[grep("BLIZZARD",newStormD$EVTYPE, ignore.case = TRUE)]<-"BLIZZARD"
+newStormD$EVENT[grep("TSUNAMI",newStormD$EVTYPE, ignore.case = TRUE)]<-"TSUNAMI"
+newStormD$EVENT[grep("WINTER",newStormD$EVTYPE, ignore.case = TRUE)]<-"WINTER"
+newStormD$EVENT[grep("ICE",newStormD$EVTYPE, ignore.case = TRUE)]<-"ICE"
+newStormD$EVENT[grep("AVALANCHE",newStormD$EVTYPE, ignore.case = TRUE)]<-"AVALANCHE"
+newStormD$EVENT[grep("SMOKE",newStormD$EVTYPE, ignore.case = TRUE)]<-"SMOKE"
+newStormD$EVENT[grep("HEAT|HIGH TEMPERATURE",newStormD$EVTYPE, ignore.case = TRUE)]<-"HEAT"
+newStormD$EVENT[grep("CLOUD",newStormD$EVTYPE, ignore.case = TRUE)]<-"CLOUD"
+newStormD$EVENT[grep("VOLCANIC ASH",newStormD$EVTYPE, ignore.case = TRUE)]<-"VOLCANIC ASH"
+newStormD$EVENT[grep("DUST",newStormD$EVTYPE, ignore.case = TRUE)]<-"DUST"
+newStormD$EVENT[grep("FOG",newStormD$EVTYPE, ignore.case = TRUE)]<-"FOG"
+newStormD$EVENT[grep("SURF",newStormD$EVTYPE, ignore.case = TRUE)]<-"SURF"
+newStormD$EVENT[grep("DEPRESSION",newStormD$EVTYPE, ignore.case = TRUE)]<-"DEPRESSION"
+newStormD$EVENT[grep("DEBRIS",newStormD$EVTYPE, ignore.case = TRUE)]<-"DEBRIS"
+newStormD$EVENT[grep("FROST|FREEZE|FREEZING",newStormD$EVTYPE, ignore.case = TRUE)]<-"FROST/FREEZE"
+newStormD$EVENT[grep("WATERSPOUT|WATER SPOUT",newStormD$EVTYPE, ignore.case = TRUE)]<-"WATERSPOUT"
+newStormD$EVENT[grep("CURRENT",newStormD$EVTYPE, ignore.case = TRUE)]<-"RIP CURRENT"
+newStormD$EVENT[grep("ASTRONOMICAL LOW TIDE",newStormD$EVTYPE, ignore.case = TRUE)]<-"ASTRONOMICAL LOW TIDE"
+```
+
+The new arranged set of events is viewed based on the first ten (10) with the most occurrence.
+```{r}
+sort(table(newStormD$EVENT),decreasing = T)[1:10]
+```
+
+Now, the unspecified elements in the Property Damage expense column is cleaned to a multiple of 10 to the power (10^) corresponding to the unspecified elements. The cleaned column is stored in a new variable column and the new column is viewed. 
+```{r}
+newStormD$PROPDMGEXP2<-1
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "1")]<-10
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "H"|newStormD$PROPDMGEXP == "2"|newStormD$PROPDMGEXP == "h")]<-100
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "K"|newStormD$PROPDMGEXP == "3")]<-1000
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "4")]<-10000
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "5")]<-100000
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "M"| newStormD$PROPDMGEXP == "m"|newStormD$PROPDMGEXP == "6")]<-1000000
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "7")]<-10000000
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "8")]<-100000000
+newStormD$PROPDMGEXP2[which(newStormD$PROPDMGEXP == "B")]<-1000000000
+sort(table(newStormD$PROPDMGEXP2),decreasing = T)[1:10]
+```
+
+Next, we clean up unspecified elements for crop damage by correcting the values of expense. The corrected expense is placed in another variable column and the result is viewed.
+```{r}
+newStormD$CROPDMGEXP2<-1
+newStormD$CROPDMGEXP2[which(newStormD$PROPDMGEXP == "2")]<-100
+newStormD$CROPDMGEXP2[which(newStormD$CROPDMGEXP == "K"|newStormD$PROPDMGEXP == "k")]<-1000
+newStormD$CROPDMGEXP2[which(newStormD$CROPDMGEXP == "M"| newStormD$PROPDMGEXP == "m")]<-1000000
+newStormD$CROPDMGEXP2[which(newStormD$CROPDMGEXP == "B")]<-1000000000
+sort(table(newStormD$CROPDMGEXP2),decreasing = T)[1:5]
+```
+
+The actual total expense for each event was then calculated and stored in a new variable column. The expense incurred are of two (2) types; Property Damage and Crop Damage, and each was stored in a separate variable. 
+```{r}
+newStormD$propertyDamage<-newStormD$PROPDMG * newStormD$PROPDMGEXP2
+
+newStormD$cropDamage<-newStormD$CROPDMG * newStormD$CROPDMGEXP2
+```
+
+# RESULTS
+## TYPES OF EVENTS THAT ARE MOST HARMFUL TO POPULATION HEALTH
+
+First, the effect of severe weather events on population health is visualized using the ggplot function in R by viewing events based on fatality rate in the United States.
+```{r message=FALSE, warning=FALSE}
+newStormD %>% select(FATALITIES,EVENT) %>% group_by(EVENT) %>%
+        summarise(sum1=sum(FATALITIES)) %>% top_n(n=10,wt=sum1) %>%
+        ggplot(aes(y=sum1,x=reorder(x=EVENT,X=sum1),fill=EVENT)) + 
+        geom_bar(stat = "identity",show.legend = F) + 
+        labs(title="Plot to show the effect of severe weather events on human fatality rate") +
+        labs(x="", y="Fatality Rate caused by severe weather events on the communities across the United States") + coord_flip()
+```
+
+Also, the effect of severe weather events on public health is not limited to the fatality rate, Injuries incurred also contribute to the effect of these events, this is also shown in a plot.  
+```{r message=FALSE, warning=FALSE}
+newStormD %>% select(INJURIES,EVENT) %>% group_by(EVENT) %>%
+        summarise(sum2=sum(INJURIES)) %>% top_n(n=10,wt=sum2) %>%
+        ggplot(aes(y=sum2,x=reorder(x=EVENT,X=sum2),fill=EVENT)) +
+        geom_bar(stat="identity",show.legend = F) + 
+        labs(title = "Plot to show the effect of severe weather events on human Injuries Incurred") +
+        labs(x="",y="Injury Rates Inflicted on the communities by severe weather events across the United States") + coord_flip()
+```
+
+## TYPES OF EVENTS WITH THE GREATEST ECONOMIC CONSEQUENCE
+For the economic effect, a plot of the property damage incurred as a result of the different severe weather events is visualized.
+```{r message=FALSE, warning=FALSE}
+newStormD %>% select(propertyDamage,EVENT) %>% group_by(EVENT) %>%
+        summarise(sum3=sum(propertyDamage)) %>% top_n(n=10,wt=sum3) %>%
+        ggplot(aes(y=sum3,x=reorder(x=EVENT,X=sum3), fill=EVENT)) +
+        geom_bar(stat = "identity",show.legend = F) + 
+        labs(title="Plot to show the economic consequence caused by severe weather events through property damage") +
+        labs(x="",y="Property Damage Expense incurred due to Severe Weather Events in the United States") + coord_flip()
+```
+
+Also, an array of the range crop damage of severe weather events across the United States is analyzed.
+```{r}
+cropEffect<-sort(tapply(newStormD$cropDamage,newStormD$EVENT,sum), decreasing = TRUE)
+cropEffect[1:10]
+```
+# CONCLUSION
+From the analysis performed, we can deduce that:  
+1. Tornado has the most severe effect on public health in the United States, causing the highest number of fatality rate and Injuries incurred.  
+2. Flood causes the most property damage across all events, there by causing the most economic consequence on property damage, while Drought causes the most crop damage across the United States, this also contribute to the effect on the economy.
