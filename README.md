@@ -8,4 +8,4 @@ including when and where they occur, as well as estimates of any fatalities, inj
 and property damage. The events in the database start in the year 1950 and end in November 2011. 
 I used the recorded observations to show the effects of severe weather on public health as well as its effect on the economy.
 
- Analysis can be viewed at (https://rpubs.com/Deletella01/640640)
+ Analysis can be viewed at https://rpubs.com/Deletella01/640640
